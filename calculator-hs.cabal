@@ -15,16 +15,12 @@ license-file:       LICENSE
 author:             J4n1X
 maintainer:         eicherjanick@gmail.com
 
--- A copyright notice.
--- copyright:
--- category:
-extra-source-files: CHANGELOG.md
 
 executable calculator-hs
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules: CalcDefs CalcParser
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

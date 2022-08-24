@@ -1,0 +1,4 @@
+cradle:
+  stack:
+    - path: "./app/Main.hs"
+      component: "calculator-hs:exe:calculator-hs"
