@@ -114,6 +114,7 @@ ws = spanCondP "isSpace" isSpace
 sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy sep element = (:) <$> element <*> many (sep *> element) <|> pure []
 
+-- Negative numbers should never parse, as we have operators that are parsed first
 calcNumber :: Parser CalcToken
 calcNumber =
   CalcNumber . read
@@ -139,7 +140,7 @@ calcOperator =
         )
 
 calcToken :: Parser CalcToken
-calcToken = calcNumber <|> calcBlock <|> calcOperator
+calcToken = calcOperator <|> calcNumber <|> calcBlock 
 
 calcBody :: Parser [CalcToken]
 calcBody = sepBy ws calcToken

@@ -23,9 +23,11 @@ isOp '*' = True
 isOp '/' = True
 isOp _   = False
 
-opPrec :: Char -> Int
-opPrec '+' = 10
-opPrec '-' = 10 
-opPrec '*' = 20
-opPrec '/' = 20
-opPrec _   = -1
+opPrec :: Maybe Char -> Int
+opPrec op = case op of
+  Just '+' -> 10
+  Just '-' -> 10 
+  Just '*' -> 20
+  Just '/' -> 20
+  Just _   -> -1
+  Nothing  -> -1
