@@ -2,3 +2,12 @@ cradle:
   stack:
     - path: "./app/Main.hs"
       component: "calculator-hs:exe:calculator-hs"
+
+    - path: "./app/CalcDefs.hs"
+      component: "calculator-hs:exe:calculator-hs"
+
+    - path: "./app/CalcParser.hs"
+      component: "calculator-hs:exe:calculator-hs"
+
+    - path: "./app/CalcInterpreter.hs"
+      component: "calculator-hs:exe:calculator-hs"

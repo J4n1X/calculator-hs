@@ -1,12 +1,16 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module CalcInterpreter(
-  InterpData(interpPos, interpToks),
-  interpCalcBlock,
-  Interpreter(runInterpreter)
+  InterpData( InterpData),
+  Interpreter(runInterpreter),
+  interpTokens
 ) where
 
-import Control.Exception
+import Control.Applicative
+import Text.Printf (printf)
+import CalcDefs
+import CalcParser
 
 -- This file contains the interpreting functions for the Calculator
 
@@ -76,10 +80,13 @@ interpCalcBinOp = undefined
 
 interpExpr :: Interpreter Double
 interpExpr = interpCalcNumber <|> interpCalcBlock
+
+
+
   
-interpText :: String -> Either InterpError Double
-interpText text = case parseText text of
-  Right tokens -> do
-    (_ ,res) <- runInterpreter interpCalcBlock $ InterpData 0 tokens
-    return res
-  Left e       -> undefined
+interpTokens :: [CalcToken] -> Either InterpError Double
+interpTokens tokens =
+  case runInterpreter interpCalcBlock $ InterpData 0 tokens of
+    Left e -> Left e
+    Right (_, res) -> Right res
+  

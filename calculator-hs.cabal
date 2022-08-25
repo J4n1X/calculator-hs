@@ -20,7 +20,7 @@ executable calculator-hs
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: CalcDefs CalcParser
+    other-modules: CalcDefs CalcParser CalcInterpreter
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
