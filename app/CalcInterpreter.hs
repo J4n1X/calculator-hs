@@ -1,14 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module CalcInterpreter
   ( InterpData (..),
     InterpState (..),
     interpNumber,
     interpOperation,
-    mapStateCarry,
     interpExpr,
+    nextExpr
   )
 where
 
@@ -80,7 +79,10 @@ setStateCarry state val = InterpState val (stateTokens state)
 splitState :: InterpState Double b -> InterpState Double b
 splitState (InterpState _ tokens) = InterpState 0.0 tokens
 
-mapStateCarry :: Fractional a => Char -> InterpState a b -> InterpState a b -> InterpState a b
+mapStateCarry :: Fractional a => Char -- ^ Operator
+  -> InterpState a b -- ^ LHS
+  -> InterpState a b -- ^ RHS
+  -> InterpState a b
 mapStateCarry op (InterpState carryA _) stateB@(InterpState carryB _) =
   setStateCarry stateB $ carryOp op carryA carryB
 
@@ -103,23 +105,31 @@ interpExpr state =
     Just ret -> ret
     Nothing -> error ("Block parsing failed! State dump: \n" ++ show state)
 
+
+-- Just interprete together
+interpBinOperation :: InterpState Double CalcToken -- ^ LHS
+  -> InterpState Double CalcToken -- ^ RHS
+  -> Char -- ^ Operator
+  -> InterpState Double CalcToken
+interpBinOperation lhs rhs op = mapStateCarry op lhs rhs
+
+nextExpr :: Int -- ^ Previous Operator Precedence
+  -> InterpState Double CalcToken -- ^ Current State
+  -> InterpState Double CalcToken
+nextExpr prevOpPrec state = 
+  -- interp next carry, then get operator
+  case nextStateToken state of 
+    Just(opState, CalcOperator curOp) -> 
+      if opPrec (Just curOp) > prevOpPrec then
+        mapStateCarry curOp state $ nextExpr (opPrec $ Just curOp) (interpExpr opState)
+      else
+        state
+    Just(_, _) -> state
+    Nothing -> state
+
 interpOperation :: InterpState Double CalcToken -> Int -> InterpState Double CalcToken
-interpOperation state@(InterpState _ []) _ = state
-interpOperation state prevPrec = case nextOp state of
-  (firstOp, state')
-    | opPrec firstOp > prevPrec ->  interpNext state' prevPrec firstOp
-    | otherwise -> interpOperation (state') (opPrec firstOp)
-  where
-    nextOp :: InterpState Double CalcToken -> (Maybe Char, InterpState Double CalcToken)
-    nextOp state = case nextStateToken state of
-      Just (opState, CalcOperator op) -> (Just op, opState)
-      Just (_, _) -> (Nothing, state)
-      Nothing -> (Nothing, state)
-    interpNext :: InterpState Double CalcToken -> Int -> Maybe Char -> InterpState Double CalcToken
-    interpNext state prevOp op
-      | prevPrec >= opPrec op = interpOperation state (opPrec op)
-      | prevPrec < opPrec op = calcStates state op $ interpOperation (interpExpr state) (opPrec op)
-      | otherwise = error "Unexpected situation"
-    calcStates :: InterpState Double CalcToken -> Maybe Char -> InterpState Double CalcToken -> InterpState Double CalcToken
-    calcStates s1 (Just op) s2 = mapStateCarry op s1 s2
-    calcStates s1 Nothing _ = s1
+interpOperation state@(InterpState _ toks) prevPrec = 
+  case nextStateToken state of
+    Just(_, CalcOperator _) -> interpOperation (nextExpr prevPrec state) 0
+    Just(_, _)              -> interpOperation (nextExpr prevPrec $ interpExpr state) 0
+    Nothing -> state
