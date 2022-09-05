@@ -10,9 +10,10 @@ parseArg :: [String] -> IO ()
 parseArg (arg:rem) = do
   case parseExpr "<argv>" arg of
     Right expr -> do
+      putStrLn $ "Input Text: " ++ arg
       print expr
-      print "This expression evaluates to:"
-      print $ maybe "Nothing" show (interpExpr expr)
+      putStrLn "This expression evaluates to:"
+      putStrLn $ maybe "Nothing" show (interpExpr expr)
     Left error   -> print error
   parseArg rem
 parseArg [] = do
