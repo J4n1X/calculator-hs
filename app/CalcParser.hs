@@ -1,6 +1,8 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 
+-- THIS MODULE IS BEING RETIRED!
+
 module CalcParser
   ( InputData (inputPos, inputText),
     parseText

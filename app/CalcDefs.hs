@@ -1,12 +1,6 @@
-module CalcDefs (
-  CalcToken (
-    CalcNumber,
-    CalcOperator,
-    CalcBlock
-  ),
-  isOp,
-  opPrec
-) where
+{-# LANGUAGE GADTs #-}
+
+module CalcDefs where
 
 -- This file contains important structures and functions for the base of the calculator
 
@@ -15,6 +9,19 @@ data CalcToken
   | CalcOperator Char
   | CalcBlock [CalcToken]
   deriving (Show, Eq)
+
+data Op
+  = Plus
+  | Minus
+  | Times
+  | Divide
+  deriving (Eq, Ord, Show)
+
+data Expr 
+  = Float Double
+  | Int   Integer
+  | BinOp Op Expr Expr
+  deriving (Eq, Ord, Show)
 
 isOp :: Char -> Bool
 isOp '+' = True

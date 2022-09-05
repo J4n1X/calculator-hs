@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module CalcInterpreter
   ( InterpData (..),
@@ -17,6 +18,7 @@ import Control.Applicative
 import Data.Bifunctor (Bifunctor)
 import GHC.Generics
 import Text.Printf (printf)
+import Control.Lens
 
 -- This file contains the interpreting functions for the Calculator
 
@@ -25,42 +27,16 @@ data InterpData = InterpData
     interpToks :: [CalcToken]
   }
   deriving (Show)
+makeLenses ''InterpData
 
 data InterpState a b = InterpState
-  { stateCarry :: a,
-    stateTokens :: [b]
+  { _stateCarry :: a,
+    _stateTokens :: [b]
   }
   deriving (Show, Generic)
+makeLenses ''InterpState
 
 newtype InterpError = InterpError String deriving (Show)
-
--- newtype Interpreter a = Interpreter
---   { runInterpreter:: InterpData -> Either InterpError (InterpData, a)
---   }
-
--- instance Functor Interpreter where
---   fmap f (Interpreter s)  =
---     Interpreter $ \input -> do
---       (input', x) <- s input
---       return (input', f x)
-
--- instance Applicative Interpreter where
---   pure x = Interpreter $ \input -> Right (input, x)
---   (Interpreter i1) <*> (Interpreter i2) =
---     Interpreter $ \input -> do
---       (input', f) <- i1 input
---       (input'', a) <- i2 input'
---       return (input'', f a)
-
--- instance Alternative (Either InterpError) where
---   empty = Left $ InterpError "empty"
---   Left _ <|> e1 = e1
---   e1     <|> _  = e1
-
--- instance Alternative Interpreter where
---   empty = Interpreter $ const empty
---   (Interpreter i1) <|> (Interpreter i2) =
---     Interpreter $ \input -> i1 input <|> i2 input
 
 carryOp :: Fractional a => Char -> (a -> a -> a)
 carryOp '+' = (+)
@@ -73,8 +49,8 @@ nextStateToken :: InterpState a b -> Maybe (InterpState a b, b)
 nextStateToken (InterpState carry state@(tok : rem)) = Just (InterpState carry rem, tok)
 nextStateToken (InterpState _ []) = Nothing
 
-setStateCarry :: InterpState a b -> a -> InterpState a b
-setStateCarry state val = InterpState val (stateTokens state)
+--setStateCarry :: InterpState a b -> a -> InterpState a b
+--setStateCarry state val = InterpState val (stateTokens state)
 
 splitState :: InterpState Double b -> InterpState Double b
 splitState (InterpState _ tokens) = InterpState 0.0 tokens
@@ -84,18 +60,21 @@ mapStateCarry :: Fractional a => Char -- ^ Operator
   -> InterpState a b -- ^ RHS
   -> InterpState a b
 mapStateCarry op (InterpState carryA _) stateB@(InterpState carryB _) =
-  setStateCarry stateB $ carryOp op carryA carryB
+  set stateCarry (carryOp op carryA carryB) stateB
 
 interpNumber :: InterpState Double CalcToken -> Maybe (InterpState Double CalcToken)
 interpNumber state = case nextStateToken state of
-  Just (rem, CalcNumber tok) -> Just $ setStateCarry rem tok
+  Just (rem, CalcNumber tok) -> Just $ set stateCarry tok rem
   Just (_, tok) -> Nothing
   Nothing -> Nothing
 
 interpBlock :: InterpState Double CalcToken -> Maybe (InterpState Double CalcToken)
 interpBlock state =
   case nextStateToken state of
-    Just (rem, CalcBlock tok) -> Just $ setStateCarry rem $ stateCarry $ interpOperation (interpExpr $ InterpState 0 tok) 0
+    Just (rem, CalcBlock tok) -> --Just $ setStateCarry rem $ stateCarry $ interpOperation (interpExpr $ InterpState 0 tok) 0
+      let nextExpr = interpOperation (interpExpr $ InterpState 0 tok) 0 in
+        Just $ set stateTokens (view stateTokens rem) nextExpr
+
     Just (_, tok) -> Nothing
     Nothing -> Nothing
 
