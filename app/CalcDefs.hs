@@ -10,6 +10,8 @@ data CalcToken
   | CalcBlock [CalcToken]
   deriving (Show, Eq)
 
+type Ident = String
+
 data Op
   = Plus
   | Minus
@@ -21,20 +23,26 @@ data Expr
   = Float Double
   | Int   Integer
   | BinOp Op Expr Expr
+  | Variable Ident
   deriving (Eq, Ord, Show)
 
-isOp :: Char -> Bool
-isOp '+' = True
-isOp '-' = True
-isOp '*' = True
-isOp '/' = True
-isOp _   = False
+data Stmt 
+  = Function Ident [Ident] Expr -- Name Parameters
+  | VarDecl Ident Expr
+  deriving(Eq, Ord, Show)
 
-opPrec :: Maybe Char -> Int
-opPrec op = case op of
-  Just '+' -> 10
-  Just '-' -> 10 
-  Just '*' -> 20
-  Just '/' -> 20
-  Just _   -> -1
-  Nothing  -> -1
+-- isOp :: Char -> Bool
+-- isOp '+' = True
+-- isOp '-' = True
+-- isOp '*' = True
+-- isOp '/' = True
+-- isOp _   = False
+-- 
+-- opPrec :: Maybe Char -> Int
+-- opPrec op = case op of
+--   Just '+' -> 10
+--   Just '-' -> 10 
+--   Just '*' -> 20
+--   Just '/' -> 20
+--   Just _   -> -1
+--   Nothing  -> -1
