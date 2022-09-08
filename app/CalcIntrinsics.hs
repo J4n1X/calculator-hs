@@ -7,7 +7,7 @@ import Data.Char
 --       Arg1 String (Double -> Double)
 --     | Arg2 String (Double -> Double -> Double)
 
-intrinsic1 :: Ident -> (Double -> Double)
+intrinsic1 :: Floating a => Ident -> (a -> a)
 intrinsic1 tgt = f $ map toLower tgt
   where
     f name 

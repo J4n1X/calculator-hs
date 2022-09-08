@@ -6,14 +6,12 @@
 module CalcInterpreter where
 
 import CalcDefs
-import CalcParser
 import CalcIntrinsics
 import Text.Printf (printf)
-import Control.Applicative
 import Control.Monad.State
 import Control.Lens
 import Data.Maybe
-import Data.List (sort)
+import Data.List (sort, sortBy)
 
 -- This file contains the interpreting functions for the Calculator
 data VariableScopeType =
@@ -29,6 +27,9 @@ data InterpVariable = InterpVariable {
   _variableValue :: Double
 } deriving (Show, Eq, Ord)
 makeLenses ''InterpVariable
+
+sortVars :: InterpVariable -> InterpVariable -> Ordering
+sortVars v1@(InterpVariable v1name v1scope _) v2@(InterpVariable v2name v2scope _) = compare (v1scope, v1name) (v2scope, v2name)
 
 data InterpState = InterpState {
   _interpFunctions :: [Stmt],
@@ -95,7 +96,7 @@ interpFunCall state c@(Call name args) =
     functions = view interpFunctions state
     getVarName (VarDecl name _ ) = name
     getVarName _                 = error "Not a variable"
-    appendVars new = set interpVariables (variables ++ new) state
+    appendVars new = state & interpVariables %~ sortBy (flip sortVars) . (++ new)
 interpFunCall _ st = error $ "Expected Call but got " ++ show st
 
 interpExternCall :: InterpState -> Expr -> InterpState
@@ -121,7 +122,7 @@ interpVarDecl :: InterpState -> Stmt -> InterpState
 interpVarDecl state cur@(VarDecl name val) = case searchVariable name (view interpVariables state) of
   Just old@(InterpVariable name1 val1 scope1) -> replaceVarDecl state cur old
   Nothing -> let valState = interpVarDecl state cur in
-    valState & interpVariables %~ sort . ( ++ [toInterpVar name valState])
+    valState & interpVariables %~ sortBy (flip sortVars) . ( ++ [toInterpVar name valState])
   where
     interpVarDecl state st@(VarDecl name val) = case val of
         Just res ->
@@ -169,7 +170,7 @@ interpExpr state _ = set interpCarry Nothing state
 
 interpStmt :: InterpState -> Stmt -> InterpState
 interpStmt state (InlineExpr ex) = interpExpr state ex
-interpStmt state fun@Function {} = state & interpFunctions %~ sort . (++ [fun]) & interpCarry .~ Nothing
+interpStmt state fun@Function {} = state & interpFunctions %~ sort . (++[fun]) & interpCarry .~ Nothing
 interpStmt state var@VarDecl {}  = interpVarDecl state var
 interpStmt _ st = error $ "Unexpected Statment Type: " ++ show st
 
