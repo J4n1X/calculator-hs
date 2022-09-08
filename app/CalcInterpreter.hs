@@ -7,23 +7,34 @@ module CalcInterpreter where
 
 import CalcDefs
 import CalcParser
+import CalcIntrinsics
 import Text.Printf (printf)
 import Control.Applicative
 import Control.Monad.State
 import Control.Lens
 import Data.Maybe
+import Data.List (sort)
 
 -- This file contains the interpreting functions for the Calculator
+data VariableScopeType =
+    Local
+  | Global
+  deriving (Show, Eq)
+
+type ScopeId = Int
+
 data InterpVariable = InterpVariable {
   _variableName  :: Ident,
+  _variableScope :: ScopeId,
   _variableValue :: Double
-} deriving (Show, Eq)
+} deriving (Show, Eq, Ord)
 makeLenses ''InterpVariable
 
 data InterpState = InterpState {
   _interpFunctions :: [Stmt],
   _interpVariables :: [InterpVariable],
-  _interpCarry     :: Maybe Double
+  _interpCarry     :: Maybe Double,
+  _interpScopeId   :: ScopeId
 } deriving (Show, Eq)
 makeLenses ''InterpState
 
@@ -46,7 +57,7 @@ searchFunction _ [] = Nothing
 searchVariable :: String -> [InterpVariable] -> Maybe InterpVariable
 searchVariable target (x:vars) =
   case x of
-    InterpVariable name _ ->
+    InterpVariable name _ _ ->
       if name == target then
         Just x
       else
@@ -63,49 +74,73 @@ runMain :: InterpState -> Maybe Double
 runMain state = view interpCarry $ interpStmt state $ fromMaybe (error "Main function wasn't found") (searchFunction "main" $ view interpFunctions state)
 
 assignVars :: InterpState -> [Stmt] -> [Expr] -> [InterpVariable]
-assignVars state vars vals = zipWith InterpVariable (map varDefName vars) (map (fromJust . view interpCarry . interpExpr state) vals)
+assignVars state vars vals = zipWith3 InterpVariable (map varDefName vars) (idRep $ view interpScopeId state) (map (fromJust . view interpCarry . interpExpr state) vals)
   where
+    idRep x = x : idRep x
     varDefName (VarDecl name _) = name
     varDefName _ = error "Not a variable"
     fromJust = fromMaybe (error "Maybe.fromJust: Nothing")
 
 interpFunCall :: InterpState -> Expr -> InterpState
-interpFunCall state (Call name args) =
+interpFunCall state c@(Call name args) =
   case searchFunction name functions of
     Just (Function _ params body) ->
-      cleanVars params (interpExpr (appendVars $ assignVars state params args) body)
-    _ -> error $ "Function was not found: " ++ show name
+      interpExpr (appendVars $ assignVars (state & interpScopeId +~ 1) params args) body
+      & interpScopeId +~ 1
+      & interpVariables %~ filter (\var -> view interpScopeId state >= view variableScope var)
+      & interpScopeId -~ 1
+    _ -> interpExternCall state c
   where
-    getVarName (VarDecl name _ ) = name
-    getVarName _                 = error "Not a variable"
-
-    cleanVars (x:params) state = cleanVars params $ set interpVariables (removeVariable (getVarName x) (view interpVariables state)) state
-    cleanVars [] state = state
-
-    isLocalVar :: [Stmt] -> InterpVariable -> Bool
-    isLocalVar (x:params) var = (view variableName var == getVarName x) || isLocalVar params var
-    isLocalVar [] _           = False
-
-    appendVars new = set interpVariables (variables ++ new) state
-
     variables = view interpVariables state
     functions = view interpFunctions state
-interpFunCall _ _ = error "Expected Call"
+    getVarName (VarDecl name _ ) = name
+    getVarName _                 = error "Not a variable"
+    appendVars new = set interpVariables (variables ++ new) state
+interpFunCall _ st = error $ "Expected Call but got " ++ show st
+
+interpExternCall :: InterpState -> Expr -> InterpState
+interpExternCall state (Call name args) = 
+  case length args of
+        1 -> let newState = interpExpr state (head args) in
+          newState 
+            & interpScopeId +~ 1
+            & interpCarry ?~ intrinsic1 name (fromMaybe (error "Failed to parse argument for external function call") (newState ^. interpCarry))
+            & interpScopeId -~ 1
+        2 -> let leftState  = interpExpr state (head args) in
+             let rightState = interpExpr state (args !! 2) in
+              rightState 
+              & interpScopeId +~ 1
+              & interpCarry ?~ intrinsic2 name
+                (fromMaybe (error "Failed to parse first argument for external function call") (leftState ^. interpCarry))
+                (fromMaybe (error "Failed to parse argument for external function call") (rightState ^. interpCarry))
+              & interpScopeId -~ 1
+        _ -> error "Invalid amount of args for intrinsic call"
+interpExternCall _ st = error $ "Expected Call but got " ++ show st
 
 interpVarDecl :: InterpState -> Stmt -> InterpState
 interpVarDecl state cur@(VarDecl name val) = case searchVariable name (view interpVariables state) of
-  Just new@(InterpVariable name1 val1) -> set interpVariables (replaceVarDecl (view interpVariables state) cur new) state
-  Nothing -> over interpVariables ( ++ [toInterpVariable state cur]) state
+  Just old@(InterpVariable name1 val1 scope1) -> replaceVarDecl state cur old
+  Nothing -> let valState = interpVarDecl state cur in
+    valState & interpVariables %~ sort . ( ++ [toInterpVar name valState])
   where
-    toInterpVariable state st@(VarDecl name val) = InterpVariable name $ case val of
-      Just res -> fromMaybe (error "Expression evaluated to nothing") $ view interpCarry (interpExpr state res)
-      Nothing ->  error "Expected value"
-    toInterpVariable _ _ = error "Expected Variable Declaration"
-    replaceVarDecl :: [InterpVariable] -> Stmt -> InterpVariable -> [InterpVariable]
-    replaceVarDecl vars cur@(VarDecl name val) new =
-      let curVar = toInterpVariable state cur in
-        zipWith (\ i v -> (if i == curVar then new else v)) vars vars
+    interpVarDecl state st@(VarDecl name val) = case val of
+        Just res ->
+          let resVal = interpExpr state res in
+            resVal
+            --InterpVariable name (view interpScopeId resVal) (fromMaybe (error "Expression evaluated to nothing") $ view interpCarry resVal) 
+        Nothing ->  error "Expected value"
+
+    interpVarDecl _ _ = error "Expected Variable Declaration"
+
+    toInterpVar name state = InterpVariable name (state ^. interpScopeId) (fromMaybe (error "Expression evaluated to nothing") $ state ^. interpCarry)
+
+    replaceVarDecl :: InterpState -> Stmt -> InterpVariable -> InterpState
+    replaceVarDecl vars cur@(VarDecl name val) old =
+      let newState = interpVarDecl state cur in
+        newState & interpVariables %~ map (\item -> if item == old then toInterpVar name newState else item)
+        --zipWith (\ i v -> (if i == curVar then new else v)) (state ^. interpVariables) (state ^.interpVariable)
     replaceVarDecl _ _ _ = error "Expected Variable Declaration"
+
 interpVarDecl _ _ = error "Expected Variable Declaration"
 
 interpExpr :: InterpState -> Expr -> InterpState
@@ -126,7 +161,7 @@ interpExpr state var@(Variable name) =
   set interpCarry
   (Just
   $ view variableValue
-  $ fromMaybe (error "Failed to get variable")
+  $ fromMaybe (error $ "Failed to get variable " ++ show name ++ "\nState dump: " ++ show state)
   $ searchVariable name (view interpVariables state))
   state
 interpExpr state call@Call {}        = interpFunCall state call
@@ -134,12 +169,12 @@ interpExpr state _ = set interpCarry Nothing state
 
 interpStmt :: InterpState -> Stmt -> InterpState
 interpStmt state (InlineExpr ex) = interpExpr state ex
-interpStmt state fun@Function {} = over interpFunctions (++ [fun]) state
+interpStmt state fun@Function {} = state & interpFunctions %~ sort . (++ [fun]) & interpCarry .~ Nothing
 interpStmt state var@VarDecl {}  = interpVarDecl state var
 interpStmt _ st = error $ "Unexpected Statment Type: " ++ show st
 
-interpTopLevel :: [Stmt] -> InterpState
-interpTopLevel = interpRecurse (InterpState [] [] $ Just 0)
+interpTopLevel :: InterpState -> [Stmt] -> InterpState
+interpTopLevel state = interpRecurse state
   where
     interpRecurse state (x:rem) = interpRecurse (interpStmt state x) rem
     interpRecurse state []      = state

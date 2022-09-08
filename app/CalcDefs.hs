@@ -28,7 +28,8 @@ data Expr
   deriving (Eq, Ord, Show)
 
 data Stmt 
-  = Function Ident [Stmt] Expr -- Name Parameters
+  = Extern Ident
+  | Function Ident [Stmt] Expr -- Name Parameters
   | VarDecl Ident (Maybe Expr)
   | InlineExpr Expr
   deriving(Eq, Ord, Show)
