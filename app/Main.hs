@@ -33,22 +33,22 @@ import Data.Either (fromRight)
 import Text.Parsec (ParseError)
 import Data.Maybe (fromMaybe)
 
-importFile :: FilePath -> IO [String]
+importFile :: FilePath -> IO String
 importFile path = do
   fileText <- readFile path
-  return $ lines fileText
+  return $ fileText
 
 checkResult res = case res of
   Left err -> error $ show err
   Right st -> st
 
-process :: InterpState -> [String] -> IO InterpState
+process :: InterpState -> String -> IO InterpState
 process state input = do
   putStrLn $ fromMaybe "Nothing" (view interpCarry resState >>= (Just . show))
   return resState
   where
     resState = interpTopLevel state stmts
-    stmts = map (checkResult . parseStmt "<stdin>") (filter (not . null) input)
+    stmts = (checkResult . parseTopLevel "<stdin>") input
 
 
 printState :: InterpState -> IO ()
@@ -92,5 +92,5 @@ main = runInputT defaultSettings $ loop (InterpState [] [] (Just 0) 0)
     |    map toLower input == ":quit"
       || map toLower input == ":exit"                     = outputStrLn "Quitting..."
     | otherwise                                           = do
-      newState <- liftIO (process state [input])
+      newState <- liftIO (process state input)
       loop newState

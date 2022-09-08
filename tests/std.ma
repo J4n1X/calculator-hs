@@ -1,6 +1,7 @@
 G = 9.81
 pi = 3.141592653589793
 
+# Single line comment
 deg2Rad(x) = x * pi / 180
 rad2Deg(x) = x * 180 / pi
 

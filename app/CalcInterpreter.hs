@@ -108,7 +108,7 @@ interpExternCall state (Call name args) =
             & interpCarry ?~ intrinsic1 name (fromMaybe (error "Failed to parse argument for external function call") (newState ^. interpCarry))
             & interpScopeId -~ 1
         2 -> let leftState  = interpExpr state (head args) in
-             let rightState = interpExpr state (args !! 2) in
+             let rightState = interpExpr state (args !! 1) in
               rightState 
               & interpScopeId +~ 1
               & interpCarry ?~ intrinsic2 name

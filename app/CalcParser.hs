@@ -81,7 +81,17 @@ contents p = do
   eof
   return r
 
+topLevel :: Parser [Stmt]
+topLevel = many $ do
+  st <- stmt
+--  Tok.whiteSpace lexer
+  return st
+
 parseExpr :: String -> String -> Either ParseError Expr
 parseExpr name s = parse (contents expr) name s
 
+parseStmt :: SourceName -> String -> Either ParseError Stmt
 parseStmt name s = parse (contents stmt) name s
+
+parseTopLevel :: SourceName -> String -> Either ParseError [Stmt]
+parseTopLevel name s = parse (contents topLevel) name s
