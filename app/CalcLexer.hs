@@ -4,12 +4,13 @@ import Text.Parsec.String (Parser)
 import Text.Parsec.Language (emptyDef)
 
 import qualified Text.Parsec.Token as Tok
+import qualified Text.Parsec as Tok
 
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
   where
     ops = ["+","*","-",";"]
-    names = ["def","extern"]
+    names = ["fun","extern"]
     style = emptyDef {
                Tok.commentLine = "#"
              , Tok.reservedOpNames = ops

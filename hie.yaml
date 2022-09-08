@@ -1,16 +1,16 @@
 cradle:
-  stack:
-    - path: "./app/Main.hs"
+  cabal:
+    - path: "app/Main.hs"
       component: "calculator-hs:exe:calculator-hs"
 
-    - path: "./app/CalcDefs.hs"
+    - path: "app/CalcDefs.hs"
       component: "calculator-hs:exe:calculator-hs"
 
-    - path: "./app/CalcParser.hs"
+    - path: "app/CalcParser.hs"
       component: "calculator-hs:exe:calculator-hs"
 
-    - path: "./app/CalcLexer.hs"
+    - path: "app/CalcLexer.hs"
       component: "calculator-hs:exe:calculator-hs"
 
-    - path: "./app/CalcInterpreter.hs"
+    - path: "app/CalcInterpreter.hs"
       component: "calculator-hs:exe:calculator-hs"

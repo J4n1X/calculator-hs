@@ -43,7 +43,7 @@ packages:
 extra-deps: 
   - lens-5.2@sha256:06029d80a926c466ae7e59e7e41f114e1f437526f776d022a8d0e19a6dc14576,14519
   - parsec-3.1.15.1@sha256:8c7a36aaadff12a38817fc3c4ff6c87e3352cffd1a58df640de7ed7a97ad8fa3,4601
-
+#  - haskeline-0.8.2
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

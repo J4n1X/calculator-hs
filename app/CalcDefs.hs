@@ -20,15 +20,17 @@ data Op
   deriving (Eq, Ord, Show)
 
 data Expr 
-  = Float Double
-  | Int   Integer
-  | BinOp Op Expr Expr
+  = Float    Double
+  | Int      Integer
+  | BinOp    Op Expr Expr
+  | Call     Ident [Expr]
   | Variable Ident
   deriving (Eq, Ord, Show)
 
 data Stmt 
-  = Function Ident [Ident] Expr -- Name Parameters
-  | VarDecl Ident Expr
+  = Function Ident [Stmt] Expr -- Name Parameters
+  | VarDecl Ident (Maybe Expr)
+  | InlineExpr Expr
   deriving(Eq, Ord, Show)
 
 -- isOp :: Char -> Bool
