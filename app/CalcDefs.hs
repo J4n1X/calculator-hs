@@ -22,16 +22,17 @@ data Op
 data Expr 
   = Float    Double
   | Int      Integer
-  | BinOp    Op Expr Expr
   | Call     Ident [Expr]
+  | BinOp    Op Expr Expr
   | Variable Ident
   deriving (Eq, Ord, Show)
 
 data Stmt 
-  = Extern Ident
-  | Function Ident [Stmt] Expr -- Name Parameters
-  | VarDecl Ident (Maybe Expr)
-  | InlineExpr Expr
+  = IfCond Expr Stmt (Maybe Stmt)  -- Condition True-Block False-Block
+  | Function Ident [Stmt] Stmt -- Name Parameters Block
+  | VarDecl Ident (Maybe Expr) -- Name Value(Optional)
+  | StmtExpr Expr              -- Expression with discarded value
+  | Block [Stmt]               -- List of Statements
   deriving(Eq, Ord, Show)
 
 -- isOp :: Char -> Bool

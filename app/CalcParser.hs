@@ -57,11 +57,11 @@ function = do
   -- reserved "fun"
   name <- identifier
   args <- parens $ commaSep variableDef
-  reserved "="
-  Function name args <$> expr
+  reserved ":"
+  Function name args <$> stmtExpr
 
-inlineExpr :: Parser Stmt
-inlineExpr = InlineExpr <$> expr
+stmtExpr :: Parser Stmt
+stmtExpr = StmtExpr <$> expr
 
 varDecl :: Parser Stmt
 varDecl = do
@@ -72,7 +72,7 @@ varDecl = do
 stmt :: Parser Stmt
 stmt = try function
    <|> try varDecl
-   <|> try inlineExpr
+   <|> try stmtExpr
 
 contents :: Parser a -> Parser a
 contents p = do

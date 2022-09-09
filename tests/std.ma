@@ -8,3 +8,7 @@ rad2Deg(x) = x * 180 / pi
 slopedNaturalForce(fg, degPitch) = fg * cos(deg2Rad(degPitch))
 slopedDownForce   (fg, degPitch) = fg * sin(deg2Rad(degPitch))
 slopedGravityForce(fn, degPitch) = fn / cos(deg2Rad(degPitch))
+
+varTest() = x = 10
+    y = 20
+    x + y

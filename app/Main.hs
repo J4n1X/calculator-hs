@@ -48,7 +48,7 @@ process state input = do
   return resState
   where
     resState = interpTopLevel state stmts
-    stmts = (checkResult . parseTopLevel "<stdin>") input
+    stmts = undefined--(checkResult . parseTopLevel "<stdin>") input
 
 
 printState :: InterpState -> IO ()

@@ -26,6 +26,7 @@ executable calculator-hs
     -- other-extensions:
     build-depends:    base ^>=4.14.3.0,
                       parsec ^>= 3.1.15.1,
+                      indents ^>= 0.5.0.1,
                       mtl >= 2.1.3,
                       haskeline >= 0.8.2,
                       lens ^>=5.2

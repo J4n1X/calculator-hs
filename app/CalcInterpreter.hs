@@ -66,11 +66,6 @@ searchVariable target (x:vars) =
 searchVariable "" _ = Nothing
 searchVariable _ [] = Nothing
 
-removeVariable :: Ident -> [InterpVariable] -> [InterpVariable]
-removeVariable tgt = filter (not <$> compareName tgt)
-  where
-    compareName name var = name == view variableName var
-
 runMain :: InterpState -> Maybe Double
 runMain state = view interpCarry $ interpStmt state $ fromMaybe (error "Main function wasn't found") (searchFunction "main" $ view interpFunctions state)
 
@@ -86,7 +81,7 @@ interpFunCall :: InterpState -> Expr -> InterpState
 interpFunCall state c@(Call name args) =
   case searchFunction name functions of
     Just (Function _ params body) ->
-      interpExpr (appendVars $ assignVars (state & interpScopeId +~ 1) params args) body
+      interpStmt (appendVars $ assignVars (state & interpScopeId +~ 1) params args) body
       & interpScopeId +~ 1
       & interpVariables %~ filter (\var -> view interpScopeId state >= view variableScope var)
       & interpScopeId -~ 1
@@ -141,8 +136,11 @@ interpVarDecl state cur@(VarDecl name val) = case searchVariable name (view inte
         newState & interpVariables %~ map (\item -> if item == old then toInterpVar name newState else item)
         --zipWith (\ i v -> (if i == curVar then new else v)) (state ^. interpVariables) (state ^.interpVariable)
     replaceVarDecl _ _ _ = error "Expected Variable Declaration"
-
 interpVarDecl _ _ = error "Expected Variable Declaration"
+
+interpBlock :: InterpState -> Stmt -> InterpState
+interpBlock state (Block (x:rem)) = interpBlock (interpStmt state x) (Block rem)
+interpBlock state (Block [])    = state
 
 interpExpr :: InterpState -> Expr -> InterpState
 interpExpr state (BinOp op lhs rhs) =
@@ -165,14 +163,18 @@ interpExpr state var@(Variable name) =
   $ fromMaybe (error $ "Failed to get variable " ++ show name ++ "\nState dump: " ++ show state)
   $ searchVariable name (view interpVariables state))
   state
-interpExpr state call@Call {}        = interpFunCall state call
+interpExpr state call@Call {}             = interpFunCall state call
 interpExpr state _ = set interpCarry Nothing state
 
 interpStmt :: InterpState -> Stmt -> InterpState
-interpStmt state (InlineExpr ex) = interpExpr state ex
-interpStmt state fun@Function {} = state & interpFunctions %~ sort . (++[fun]) & interpCarry .~ Nothing
-interpStmt state var@VarDecl {}  = interpVarDecl state var
-interpStmt _ st = error $ "Unexpected Statment Type: " ++ show st
+interpStmt state (StmtExpr ex)            = interpExpr state ex
+interpStmt state fun@(Function name _ _)  = state 
+                                              & interpFunctions %~ filter (\(Function name1 _ _) -> name1 /= name) -- Remove old function if it exists
+                                              & interpFunctions %~ sort . (++[fun]) 
+                                              & interpCarry .~ Nothing
+interpStmt state var@VarDecl {}           = interpVarDecl state var
+interpStmt state block@Block {}           = interpBlock state block
+interpStmt _ st                           = error $ "Unexpected Statment Type: " ++ show st
 
 interpTopLevel :: InterpState -> [Stmt] -> InterpState
 interpTopLevel state = interpRecurse state
