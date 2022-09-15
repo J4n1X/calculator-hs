@@ -27,10 +27,10 @@ Functions can either consist of a single expression:
 foo(x, y) = x + y
 ```
 
-Or they can be build out multiple expression, with the last expression being the returned result:
+Or they can be built out multiple expressions seperated by semicolons, with the last expression being the returned result:
 ```
 foo(x) = {
-  y = x * 10
+  y = x * 10;
   y + x
 }
 ```
