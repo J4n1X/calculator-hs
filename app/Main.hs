@@ -93,7 +93,7 @@ main = runInputT defaultSettings $ loop (InterpState [] [] (Just 0) 0) "" False
                                                               loop newState buffer multiLine
     | inputLower input == ":begin"                        = loop state "" True
     | inputLower input == ":end"                          = do
-                                                              newState <- liftIO (process state input)
+                                                              newState <- liftIO (process state buffer)
                                                               loop newState "" False
     | inputLower input == ":clear"                        = loop state "" multiLine
     |    inputLower input == ":quit"

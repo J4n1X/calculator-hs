@@ -36,6 +36,9 @@ floating = Float <$> float
 int :: Parser Expr
 int = Float . fromInteger <$> integer
 
+braces :: Parser a -> Parser a
+braces a = between (reserved "{") (reserved "}") a
+
 call :: Parser Expr
 call = do
   name <- identifier
@@ -57,17 +60,28 @@ variableDef = do
   name <- identifier
   return $ VarDecl name Nothing
 
-
 function :: Parser Stmt
 function = do
   -- reserved "fun"
   name <- identifier
   args <- parens $ commaSep variableDef
-  _ <- reserved "="
+  reserved "="
   Function name args <$> stmt
 
+ifCondStmt :: Parser Stmt
+ifCondStmt = do
+  reserved "if"
+  cond <- parens expr
+  trueBody <- stmt
+  IfCond cond trueBody <$> optionMaybe elseBody
+  where
+    elseBody = do
+      reserved "else" 
+      stmt
+
+
 stmtBlock :: Parser Stmt
-stmtBlock = Block <$> between (reserved "{") (reserved "}") (semiSep stmt)
+stmtBlock = Block <$> braces (semiSep stmt)
 
 stmtExpr :: Parser Stmt
 stmtExpr = StmtExpr <$> expr
@@ -75,13 +89,14 @@ stmtExpr = StmtExpr <$> expr
 varDecl :: Parser Stmt
 varDecl = do
   name <- identifier
-  _ <- reserved "="
+  reserved "="
   VarDecl name . Just <$> expr
 
 
 stmt :: Parser Stmt
 stmt = try varDecl
    <|> try stmtExpr
+   <|> try ifCondStmt
    <|> try stmtBlock
 
 contents :: Parser a -> Parser a

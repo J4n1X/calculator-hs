@@ -26,9 +26,6 @@ float = Tok.float lexer
 parens :: Parser a -> Parser a
 parens = Tok.parens lexer
 
-braces :: Parser a -> Parser a
-braces = Tok.braces lexer
-
 commaSep :: Parser a -> Parser [a]
 commaSep = Tok.commaSep lexer
 
