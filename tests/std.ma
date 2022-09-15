@@ -5,10 +5,15 @@ pi = 3.141592653589793
 deg2Rad(x) = x * pi / 180
 rad2Deg(x) = x * 180 / pi
 
-slopedNaturalForce(fg, degPitch) = fg * cos(deg2Rad(degPitch))
-slopedDownForce   (fg, degPitch) = fg * sin(deg2Rad(degPitch))
-slopedGravityForce(fn, degPitch) = fn / cos(deg2Rad(degPitch))
-
-varTest() = x = 10
-    y = 20
-    x + y
+slopedNaturalForce(fg, degPitch) = {
+    radPitch = deg2Rad(degPitch);
+    fg * cos(radPitch)
+}
+slopedDownForce   (fg, degPitch) = {
+    radPitch = deg2Rad(degPitch);
+    fg * sin(radPitch)
+}
+slopedGravityForce(fn, degPitch) = {
+    radPitch = deg2Rad(degPitch);
+    fn / cos(radPitch)
+}    

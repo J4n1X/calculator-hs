@@ -48,7 +48,7 @@ process state input = do
   return resState
   where
     resState = interpTopLevel state stmts
-    stmts = undefined--(checkResult . parseTopLevel "<stdin>") input
+    stmts = (checkResult . parseTopLevel "<stdin>") input
 
 
 printState :: InterpState -> IO ()
@@ -67,30 +67,39 @@ printState state = do
   putStr "\n"
 
 main :: IO ()
-main = runInputT defaultSettings $ loop (InterpState [] [] (Just 0) 0)
+main = runInputT defaultSettings $ loop (InterpState [] [] (Just 0) 0) "" False
   where
-  loop state = do
+  loop state buffer multi = do
     minput <- getInputLine "ready> "
     case minput of
       Nothing -> outputStrLn "Goodbye."
-      Just input -> checkInput state input
-  checkInput state input
-    | map toLower input == "help"    =
-      outputStrLn
-        (    "Enter \":state\" to display the current interpreter state"
-          ++ "Enter \":reset\" to remove all interpreted code"
-          ++ "Enter \":import <filename>\" to import code"
-          ++ "Enter \":exit\" or \":quit\" to exit the application\n"
-        ) >> loop state
-    | map toLower input                == ":state"        = liftIO (printState state) >> loop state
-    | map toLower input                == ":reset"        = loop (InterpState [] [] (Just 0) 0)
-    | head (words (map toLower input)) == ":import"       =
-      do
-        importedLines <- liftIO (importFile $ last (words $ map toLower input))
-        newState <- liftIO (process state importedLines)
-        loop newState
-    |    map toLower input == ":quit"
-      || map toLower input == ":exit"                     = outputStrLn "Quitting..."
+      Just input -> checkInput state buffer input multi
+  inputLower input = map toLower input 
+  checkInput state buffer input multiLine
+    | inputLower input == ":help"                         = outputStrLn
+                                                              (    "Enter \":state\" to display the current interpreter state\n"
+                                                                ++ "Enter \":reset\" to remove all interpreted code\n"
+                                                                ++ "Enter \":import <filename>\" to import code\n"
+                                                                ++ "Enter \":begin\" to begin multiline function\n"
+                                                                ++ "Enter \":end\" to execute multiline function\n"
+                                                                ++ "Enter \":clear\" to clear multiline buffer\n"
+                                                                ++ "Enter \":exit\" or \":quit\" to exit the application"
+                                                              ) >> loop state buffer multiLine
+    | inputLower input                == ":state"         = liftIO (printState state) >> loop state buffer multiLine
+    | inputLower input                == ":reset"         = loop (InterpState [] [] (Just 0) 0) "" False
+    | head (words (inputLower input)) == ":import"        = do
+                                                              importedLines <- liftIO (importFile $ last (words $ inputLower input))
+                                                              newState <- liftIO (process state importedLines)
+                                                              loop newState buffer multiLine
+    | inputLower input == ":begin"                        = loop state "" True
+    | inputLower input == ":end"                          = do
+                                                              newState <- liftIO (process state input)
+                                                              loop newState "" False
+    | inputLower input == ":clear"                        = loop state "" multiLine
+    |    inputLower input == ":quit"
+      || inputLower input == ":exit"                      = outputStrLn "Quitting..."
+    | head input == ':'                                   = outputStrLn "Invalid command, enter \":help\" for help." >> loop state buffer multiLine
+    | multiLine                                           = loop state (buffer ++ input) multiLine
     | otherwise                                           = do
-      newState <- liftIO (process state input)
-      loop newState
+                                                              newState <- liftIO (process state input)
+                                                              loop newState "" multiLine

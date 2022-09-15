@@ -8,9 +8,9 @@ import Data.Char
 --     | Arg2 String (Double -> Double -> Double)
 
 intrinsic1 :: Floating a => Ident -> (a -> a)
-intrinsic1 tgt = f tgt
+intrinsic1 = f
   where
-    f name 
+    f name
       | name == "exp"   = exp
       | name == "sqrt"  = sqrt
       | name == "log"   = log
@@ -29,7 +29,7 @@ intrinsic1 tgt = f tgt
       | otherwise = error "Unknown single-argument intrinsic"
 
 intrinsic2 :: Ident -> (Double -> Double -> Double)
-intrinsic2 tgt = f tgt
+intrinsic2 = f
   where
     f name
       | name == "(**)" = (**)

@@ -22,9 +22,17 @@ To get help, type `:help`
 
 ### Function Definition
 
-Functions currently can only consist of a single expression, but support for full statement bodies will be added later.
+Functions can either consist of a single expression:
 ```
 foo(x, y) = x + y
+```
+
+Or they can be build out multiple expression, with the last expression being the returned result:
+```
+foo(x) = {
+  y = x * 10
+  y + x
+}
 ```
 
 ### Variables

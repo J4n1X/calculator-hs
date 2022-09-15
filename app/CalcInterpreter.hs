@@ -69,8 +69,8 @@ searchVariable _ [] = Nothing
 runMain :: InterpState -> Maybe Double
 runMain state = view interpCarry $ interpStmt state $ fromMaybe (error "Main function wasn't found") (searchFunction "main" $ view interpFunctions state)
 
-assignVars :: InterpState -> [Stmt] -> [Expr] -> [InterpVariable]
-assignVars state vars vals = zipWith3 InterpVariable (map varDefName vars) (idRep $ view interpScopeId state) (map (fromJust . view interpCarry . interpExpr state) vals)
+assignVars :: InterpState -> [Stmt] -> [Expr] -> InterpState
+assignVars state vars vals = state & interpVariables %~  (++ zipWith3 InterpVariable (map varDefName vars) (idRep $ view interpScopeId state) (map (fromJust . view interpCarry . interpExpr state) vals))
   where
     idRep x = x : idRep x
     varDefName (VarDecl name _) = name
@@ -81,8 +81,7 @@ interpFunCall :: InterpState -> Expr -> InterpState
 interpFunCall state c@(Call name args) =
   case searchFunction name functions of
     Just (Function _ params body) ->
-      interpStmt (appendVars $ assignVars (state & interpScopeId +~ 1) params args) body
-      & interpScopeId +~ 1
+      interpStmt (assignVars (state & interpScopeId +~ 1) params args) body
       & interpVariables %~ filter (\var -> view interpScopeId state >= view variableScope var)
       & interpScopeId -~ 1
     _ -> interpExternCall state c
@@ -91,7 +90,7 @@ interpFunCall state c@(Call name args) =
     functions = view interpFunctions state
     getVarName (VarDecl name _ ) = name
     getVarName _                 = error "Not a variable"
-    appendVars new = state & interpVariables %~ sortBy (flip sortVars) . (++ new)
+    appendVars state new = state & interpVariables %~ sortBy (flip sortVars) . (++ new)
 interpFunCall _ st = error $ "Expected Call but got " ++ show st
 
 interpExternCall :: InterpState -> Expr -> InterpState
@@ -160,7 +159,7 @@ interpExpr state var@(Variable name) =
   set interpCarry
   (Just
   $ view variableValue
-  $ fromMaybe (error $ "Failed to get variable " ++ show name ++ "\nState dump: " ++ show state)
+  $ fromMaybe (error $ "Failed to get variable " ++ show name ++ "\nVariable dump: " ++ show (view interpVariables state))
   $ searchVariable name (view interpVariables state))
   state
 interpExpr state call@Call {}             = interpFunCall state call

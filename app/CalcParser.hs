@@ -57,8 +57,11 @@ function = do
   -- reserved "fun"
   name <- identifier
   args <- parens $ commaSep variableDef
-  reserved ":"
-  Function name args <$> stmtExpr
+  _ <- reserved "="
+  Function name args <$> stmt
+
+stmtBlock :: Parser Stmt
+stmtBlock = Block <$> between (reserved "{") (reserved "}") (semiSep stmt)
 
 stmtExpr :: Parser Stmt
 stmtExpr = StmtExpr <$> expr
@@ -69,10 +72,11 @@ varDecl = do
   _ <- reserved "="
   VarDecl name . Just <$> expr
 
+
 stmt :: Parser Stmt
-stmt = try function
-   <|> try varDecl
+stmt = try varDecl
    <|> try stmtExpr
+   <|> try stmtBlock
 
 contents :: Parser a -> Parser a
 contents p = do
@@ -81,11 +85,14 @@ contents p = do
   eof
   return r
 
+topStmts :: Parser Stmt
+topStmts = try function
+       <|> try varDecl
+       <|> try stmtExpr
+
 topLevel :: Parser [Stmt]
-topLevel = many $ do
-  st <- stmt
+topLevel = many topStmts
 --  Tok.whiteSpace lexer
-  return st
 
 parseExpr :: String -> String -> Either ParseError Expr
 parseExpr name s = parse (contents expr) name s
