@@ -139,7 +139,8 @@ interpVarDecl _ _ = error "Expected Variable Declaration"
 
 interpBlock :: InterpState -> Stmt -> InterpState
 interpBlock state (Block (x:rem)) = interpBlock (interpStmt state x) (Block rem)
-interpBlock state (Block [])    = state
+interpBlock state (Block [])      = state
+interpBlock _ st                  = error $ "Expected block, but got " ++ show st
 
 interpExpr :: InterpState -> Expr -> InterpState
 interpExpr state (BinOp op lhs rhs) =
@@ -148,13 +149,24 @@ interpExpr state (BinOp op lhs rhs) =
     (view interpCarry (interpExpr state rhs)))
     state
   where
+    -- this is kind of a hack, but we'll use it for now
+    boolResult :: Bool -> Double 
+    boolResult True  = 1.0
+    boolResult False = 0.0
     addValues :: Op -> Maybe Double -> Maybe Double -> Maybe Double
     addValues op left right = case op of
-      Plus   -> (+) <$> left <*> right
-      Minus  -> (-) <$> left <*> right
-      Times  -> (*) <$> left <*> right
-      Divide -> (/) <$> left <*> right
-interpExpr state (Float val)         = set interpCarry (Just val) state
+      Plus         -> (+) <$> left <*> right
+      Minus        -> (-) <$> left <*> right
+      Times        -> (*) <$> left <*> right
+      Divide       -> (/) <$> left <*> right
+      Equal        -> boolResult <$> ((==) <$> left <*> right)
+      NotEqual     -> boolResult <$> ((/=) <$> left <*> right)
+      Greater      -> boolResult <$> ((>)  <$> left <*> right)
+      GreaterEqual -> boolResult <$> ((>=) <$> left <*> right)
+      Less         -> boolResult <$> ((<)  <$> left <*> right)
+      LessEqual    -> boolResult <$> ((<=) <$> left <*> right)
+interpExpr state (Float val) = set interpCarry (Just val) state
+
 interpExpr state var@(Variable name) =
   set interpCarry
   (Just

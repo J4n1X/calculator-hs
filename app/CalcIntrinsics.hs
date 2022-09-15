@@ -28,7 +28,7 @@ intrinsic1 = f
       | name == "acosh" = acosh
       | otherwise = error "Unknown single-argument intrinsic"
 
-intrinsic2 :: Ident -> (Double -> Double -> Double)
+intrinsic2 :: Floating a => Ident -> (a -> a -> a)
 intrinsic2 = f
   where
     f name

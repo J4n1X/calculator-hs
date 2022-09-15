@@ -17,6 +17,12 @@ data Op
   | Minus
   | Times
   | Divide
+  | Equal
+  | NotEqual
+  | Greater
+  | GreaterEqual
+  | Less
+  | LessEqual
   deriving (Eq, Ord, Show)
 
 data Expr 

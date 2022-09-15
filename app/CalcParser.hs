@@ -14,10 +14,16 @@ import Text.ParserCombinators.ReadP (skipSpaces)
 
 binary s f assoc = Ex.Infix (reservedOp s >> return (BinOp f)) assoc
 
-opTable = [[binary "*" Times Ex.AssocLeft,
-          binary "/"   Divide Ex.AssocLeft]
-        ,[binary "+"   Plus Ex.AssocLeft,
-          binary "-"   Minus Ex.AssocLeft]]
+opTable = [[binary "*"  Times        Ex.AssocLeft,
+            binary "/"  Divide       Ex.AssocLeft],
+           [binary "+"  Plus         Ex.AssocLeft,
+            binary "-"  Minus        Ex.AssocLeft],
+           [binary "==" Equal        Ex.AssocLeft,
+            binary "!=" NotEqual     Ex.AssocLeft,
+            binary ">"  Greater      Ex.AssocLeft,
+            binary ">=" GreaterEqual Ex.AssocLeft,
+            binary "<"  Less         Ex.AssocLeft,
+            binary "<=" LessEqual    Ex.AssocLeft]]
 
 
 expr :: Parser Expr
