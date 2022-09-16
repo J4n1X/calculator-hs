@@ -32,6 +32,6 @@ intrinsic2 :: Floating a => Ident -> (a -> a -> a)
 intrinsic2 = f
   where
     f name
-      | name == "(**)" = (**)
+      | name == "pow" = (**)
       | name == "logBase" = logBase
       | otherwise = error "Unknown double-argument intrinsic"
