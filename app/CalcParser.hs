@@ -2,6 +2,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 module CalcParser where
 
+import Debug.Trace
 import Text.Parsec
 import Text.Parsec.String (Parser)
 
@@ -27,19 +28,20 @@ opTable = [[binary "*"  Times        Ex.AssocLeft,
 
 
 braces :: Parser a -> Parser a
-braces a = between (reserved "{") (reserved "}") a
+braces a = between (reservedOp "{") (reservedOp "}") a
 
 brackets :: Parser a -> Parser a
-brackets a = between (reserved "[") (reserved "]") a
+brackets a = between (reservedOp "[") (reservedOp "]") a
 
 expr :: Parser Expr
 expr = Ex.buildExpressionParser opTable factor
 
 typ :: Parser CalcType
-typ = try intType 
+typ = try intType
   <|> try byteType
   <|> try floatType
   <|> try arrayType
+  <?> "type"
   where
     intType = do
       reserved "int"
@@ -56,7 +58,7 @@ typ = try intType
       return $ CalcArray t s
     arrDef = do
       t <- typ
-      reserved ";"
+      reservedOp ";"
       s <- integer
       return (t, s)
 
@@ -65,7 +67,7 @@ floating = Value . FloatValue <$> float
 
 -- For now, we only support doubles
 int :: Parser Expr
-int = Value . IntegerValue .fromInteger <$> integer
+int = Value . IntegerValue . fromInteger <$> integer
 
 byte :: Parser Expr
 byte = Value . ByteValue . fromInteger <$> integer
@@ -82,22 +84,34 @@ variableRef = Variable <$> identifier
 factor :: Parser Expr
 factor = try floating
        <|> try int
+       <|> try byte
        <|> try call
        <|> variableRef
        <|> parens expr
+       <?> "factor"
 
 variableDef :: Parser Stmt
 variableDef = do
   name <- identifier
-  return $ VarDecl name Nothing
+  reservedOp ":"
+  t <- typ
+  return $ VarDecl name (Just t) Nothing
+
+varDecl :: Parser Stmt
+varDecl = do
+  name <- identifier
+  t <- optionMaybe $  reservedOp ":" *> typ
+  value <- reservedOp "=" *> expr
+  return $ VarDecl name t (Just value)
 
 function :: Parser Stmt
 function = do
-  -- reserved "fun"
+    --reserved "fun"
   name <- identifier
   args <- parens $ commaSep variableDef
-  reserved "="
-  Function name args <$> stmt
+  t <- optionMaybe $ reservedOp ":" *> typ
+  reservedOp "="
+  Function name t args <$> stmt
 
 ifCondStmt :: Parser Stmt
 ifCondStmt = do
@@ -107,7 +121,7 @@ ifCondStmt = do
   IfCond cond trueBody <$> optionMaybe elseBody
   where
     elseBody = do
-      reserved "else" 
+      reserved "else"
       stmt
 
 
@@ -117,18 +131,13 @@ stmtBlock = Block <$> braces (semiSep stmt)
 stmtExpr :: Parser Stmt
 stmtExpr = StmtExpr <$> expr
 
-varDecl :: Parser Stmt
-varDecl = do
-  name <- identifier
-  reserved "="
-  VarDecl name . Just <$> expr
-
 
 stmt :: Parser Stmt
 stmt = try varDecl
    <|> try stmtExpr
    <|> try ifCondStmt
    <|> try stmtBlock
+   <?> "statement"
 
 contents :: Parser a -> Parser a
 contents p = do
@@ -141,6 +150,7 @@ topStmts :: Parser Stmt
 topStmts = try function
        <|> try varDecl
        <|> try stmtExpr
+       <?> "top level statement"
 
 topLevel :: Parser [Stmt]
 topLevel = many topStmts

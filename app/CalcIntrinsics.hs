@@ -7,8 +7,8 @@ import Data.Char
 --       Arg1 String (Double -> Double)
 --     | Arg2 String (Double -> Double -> Double)
 
-intrinsic1 :: Floating a => Ident -> (a -> a)
-intrinsic1 = f
+intrinsic1 :: Ident -> (CalcValue -> CalcValue)
+intrinsic1 = asCalcValues . f
   where
     f name
       | name == "exp"   = exp
@@ -27,11 +27,17 @@ intrinsic1 = f
       | name == "atanh" = atanh
       | name == "acosh" = acosh
       | otherwise = error "Unknown single-argument intrinsic"
+    asCalcValues :: (Double -> Double) -> CalcValue -> CalcValue
+    asCalcValues f (FloatValue val) =  FloatValue $ f val
+    asCalcValues _ val              = error $ "Expected Float value, but got " ++ show val
 
-intrinsic2 :: Floating a => Ident -> (a -> a -> a)
-intrinsic2 = f
+intrinsic2 :: Ident -> (CalcValue -> CalcValue -> CalcValue)
+intrinsic2 = asCalcValues . f
   where
     f name
       | name == "pow" = (**)
       | name == "logBase" = logBase
       | otherwise = error "Unknown double-argument intrinsic"
+    asCalcValues :: (Double -> Double -> Double) -> CalcValue -> CalcValue -> CalcValue
+    asCalcValues f (FloatValue val1) (FloatValue val2) =  FloatValue $ f val1 val2
+    asCalcValues _ _ val              = error $ "Expected Float value, but got " ++ show val
