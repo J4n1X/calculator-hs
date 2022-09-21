@@ -26,18 +26,49 @@ opTable = [[binary "*"  Times        Ex.AssocLeft,
             binary "<=" LessEqual    Ex.AssocLeft]]
 
 
+braces :: Parser a -> Parser a
+braces a = between (reserved "{") (reserved "}") a
+
+brackets :: Parser a -> Parser a
+brackets a = between (reserved "[") (reserved "]") a
+
 expr :: Parser Expr
 expr = Ex.buildExpressionParser opTable factor
 
+typ :: Parser CalcType
+typ = try intType 
+  <|> try byteType
+  <|> try floatType
+  <|> try arrayType
+  where
+    intType = do
+      reserved "int"
+      return CalcInteger
+    byteType = do
+      reserved "byte"
+      return CalcByte
+    floatType = do
+      reserved "float"
+      return CalcFloat
+    arrayType = do
+      reserved "array"
+      (t, s) <- brackets arrDef
+      return $ CalcArray t s
+    arrDef = do
+      t <- typ
+      reserved ";"
+      s <- integer
+      return (t, s)
+
 floating :: Parser Expr
-floating = Float <$> float
+floating = Value . FloatValue <$> float
 
 -- For now, we only support doubles
 int :: Parser Expr
-int = Float . fromInteger <$> integer
+int = Value . IntegerValue .fromInteger <$> integer
 
-braces :: Parser a -> Parser a
-braces a = between (reserved "{") (reserved "}") a
+byte :: Parser Expr
+byte = Value . ByteValue . fromInteger <$> integer
 
 call :: Parser Expr
 call = do

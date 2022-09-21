@@ -38,14 +38,10 @@ sortVars v1@(InterpVariable v1name v1scope _) v2@(InterpVariable v2name v2scope 
 data InterpState = InterpState {
   _interpFunctions :: [Stmt],
   _interpVariables :: [InterpVariable],
-  _interpCarry     :: Maybe Double,
+  _interpCarry     :: Maybe CalcValue,
   _interpScopeId   :: ScopeId
 } deriving (Show, Eq)
 makeLenses ''InterpState
-
-newtype Interpreter a = Interpreter {
-  runInterpreter :: State InterpState a
-} deriving (Functor, Applicative, Monad, MonadState InterpState)
 
 searchFunction :: String -> [Stmt] -> Maybe Stmt
 searchFunction target (x:funs) =
@@ -84,7 +80,7 @@ getVariable target tgtdepth (x:vars) =
 getVariable "" _ _ = Nothing
 getVariable _ _ [] = Nothing
 
-runMain :: InterpState -> Maybe Double
+runMain :: InterpState -> Maybe CalcValue
 runMain state = view interpCarry $ interpStmt state $ fromMaybe (error "Main function wasn't found") (searchFunction "main" $ view interpFunctions state)
 
 cleanVars :: InterpState -> InterpState
@@ -189,30 +185,31 @@ interpFunDef state fun@(Function name vars body) = state
                                               & interpCarry .~ Nothing
 interpFunDef _ st = error $ "Expected Function definition, got " ++ show st
 
+addValues :: Op -> Maybe Double -> Maybe Double -> Maybe Double
+addValues op left right = case op of
+  Plus         -> (+) <$> left <*> right
+  Minus        -> (-) <$> left <*> right
+  Times        -> (*) <$> left <*> right
+  Divide       -> (/) <$> left <*> right
+  Equal        -> boolResult <$> ((==) <$> left <*> right)
+  NotEqual     -> boolResult <$> ((/=) <$> left <*> right)
+  Greater      -> boolResult <$> ((>)  <$> left <*> right)
+  GreaterEqual -> boolResult <$> ((>=) <$> left <*> right)
+  Less         -> boolResult <$> ((<)  <$> left <*> right)
+  LessEqual    -> boolResult <$> ((<=) <$> left <*> right)
+  where
+    -- this is kind of a hack, but we'll use it for now
+    boolResult :: Bool -> CalcValue
+    boolResult True  = IntegerValue 1
+    boolResult False = IntegerValue 0
+
 interpExpr :: InterpState -> Expr -> InterpState
 interpExpr state (BinOp op lhs rhs) =
   set interpCarry
     (addValues op (view interpCarry (interpExpr state lhs))
     (view interpCarry (interpExpr state rhs)))
-    state
-  where
-    -- this is kind of a hack, but we'll use it for now
-    boolResult :: Bool -> Double
-    boolResult True  = 1.0
-    boolResult False = 0.0
-    addValues :: Op -> Maybe Double -> Maybe Double -> Maybe Double
-    addValues op left right = case op of
-      Plus         -> (+) <$> left <*> right
-      Minus        -> (-) <$> left <*> right
-      Times        -> (*) <$> left <*> right
-      Divide       -> (/) <$> left <*> right
-      Equal        -> boolResult <$> ((==) <$> left <*> right)
-      NotEqual     -> boolResult <$> ((/=) <$> left <*> right)
-      Greater      -> boolResult <$> ((>)  <$> left <*> right)
-      GreaterEqual -> boolResult <$> ((>=) <$> left <*> right)
-      Less         -> boolResult <$> ((<)  <$> left <*> right)
-      LessEqual    -> boolResult <$> ((<=) <$> left <*> right)
-interpExpr state (Float val) = set interpCarry (Just val) state
+    state 
+interpExpr state (Value val) = set interpCarry (Just val) state
 
 interpExpr state var@(Variable name) =
   set interpCarry
